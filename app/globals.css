@@ -1,26 +1,164 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Brand colors */
+  --color-brand-50:  #FDF0F0;
+  --color-brand-100: #F5B8B8;
+  --color-brand-200: #E87272;
+  --color-brand-300: #D63B3D;
+  --color-brand-400: #C41E20;
+  --color-brand-500: #B52020;
+  --color-brand-600: #8C1A1A;
+  --color-brand-700: #6B1212;
+  --color-brand-800: #4A0A0A;
+  --color-brand-900: #2D0505;
+
+  /* Background colors */
+  --color-bg-base:     #080809;
+  --color-bg-surface:  #111113;
+  --color-bg-elevated: #1A1A1E;
+  --color-bg-overlay:  #222228;
+
+  /* Animations */
+  --animate-fade-in:  fadeIn 0.3s ease-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Backgrounds */
+  --bg-base:        #080809;
+  --bg-surface:     #111113;
+  --bg-elevated:    #1A1A1E;
+  --bg-overlay:     #222228;
+
+  /* Borders */
+  --border-subtle:  rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong:  rgba(255, 255, 255, 0.18);
+
+  /* Brand */
+  --red-900:  #2D0505;
+  --red-800:  #4A0A0A;
+  --red-700:  #6B1212;
+  --red-600:  #8C1A1A;
+  --red-500:  #B52020;
+  --red-400:  #C41E20;
+  --red-300:  #D63B3D;
+  --red-200:  #E87272;
+  --red-100:  #F5B8B8;
+  --red-50:   #FDF0F0;
+
+  /* Text */
+  --text-primary:   #F0E6D0;
+  --text-secondary: #A8997F;
+  --text-tertiary:  #6B6050;
+  --text-disabled:  #3D3830;
+
+  /* Status */
+  --status-livre:      #22C55E;
+  --status-ocupada:    #C41E20;
+  --status-limpeza:    #F59E0B;
+  --status-manutencao: #6366F1;
+
+  /* Feedback */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger:  #EF4444;
+  --info:    #3B82F6;
+
+  --realtime-pulse: #22C55E;
+}
+
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+@keyframes realtimePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes cardFlash {
+  0%   { background-color: rgba(196, 30, 32, 0.18); }
+  100% { background-color: transparent; }
+}
+
+@keyframes skeletonShine {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 25%,
+    var(--bg-overlay) 50%,
+    var(--bg-elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShine 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Spotlight border nos suite cards */
+.suite-card {
+  position: relative;
+  overflow: hidden;
+}
+.suite-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle 120px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 0;
+}
+.suite-card:hover::before { opacity: 1; }
+
+/* Safe area para dock mobile */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .dock-container {
+    bottom: calc(16px + env(safe-area-inset-bottom));
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

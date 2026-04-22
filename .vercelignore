@@ -1,0 +1,11 @@
+# Development artifacts
+.claude/
+*.tsbuildinfo
+coverage/
+
+# Docs not needed at runtime
+AGENTS.md
+CLAUDE.md
+
+# Local dev files
+*.local
