@@ -22,7 +22,7 @@ export async function getReceitaPorHora(): Promise<ReceitaHoraEntry[]> {
 
   const { data, error } = await supabase
     .from('stays')
-    .select('closed_at, valor_total, payment_status')
+    .select('closed_at, price, payment_status')
     .eq('payment_status', 'confirmed')
     .gte('closed_at', startOfDay.toISOString())
     .order('closed_at')
@@ -34,10 +34,10 @@ export async function getReceitaPorHora(): Promise<ReceitaHoraEntry[]> {
   }
 
   for (const row of data ?? []) {
-    if (!row.closed_at || row.valor_total == null) continue
+    if (!row.closed_at || row.price == null) continue
     const hora = new Date(row.closed_at).getHours()
     const key = String(hora).padStart(2, '0') + ':00'
-    map[key] = (map[key] ?? 0) + Number(row.valor_total)
+    map[key] = (map[key] ?? 0) + Number(row.price)
   }
 
   return Object.entries(map).map(([hora, receita]) => ({ hora, receita }))

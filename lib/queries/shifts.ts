@@ -7,7 +7,13 @@ export async function getTurnosAtivos(): Promise<TurnoAtivo[]> {
     .from('v_turnos_ativos')
     .select('*')
     .order('started_at', { ascending: false })
-    .limit(30)
+    .limit(60)
   if (error) throw error
-  return (data ?? []) as TurnoAtivo[]
+
+  const seen = new Set<string>()
+  return (data ?? []).filter((row) => {
+    if (seen.has(row.id)) return false
+    seen.add(row.id)
+    return true
+  }) as TurnoAtivo[]
 }

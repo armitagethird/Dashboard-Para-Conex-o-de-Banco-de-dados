@@ -163,6 +163,7 @@ export function BottomNav() {
                 <Link
                   ref={(el) => { itemRefs.current[i] = el }}
                   href={href}
+                  prefetch={true}
                   onClick={() => onClickItem(itemRefs.current[i] ?? null)}
                   className="dock-item flex items-center justify-center rounded-xl group-hover:-translate-y-1.5"
                   style={{

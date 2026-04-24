@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { animate, stagger } from 'animejs'
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
@@ -188,17 +187,6 @@ export function AuditTable({ entries, total, page, pageSize, onPageChange }: Aud
   const [detail, setDetail] = useState<AuditLogEntry | null>(null)
   const totalPages = Math.ceil(total / pageSize)
 
-  useEffect(() => {
-    if (!entries.length) return
-    animate('.audit-row', {
-      opacity: [0, 1],
-      translateX: [-12, 0],
-      duration: 350,
-      delay: stagger(30),
-      ease: 'easeOutCubic',
-    })
-  }, [entries])
-
   return (
     <TooltipProvider>
       <div
@@ -226,7 +214,7 @@ export function AuditTable({ entries, total, page, pageSize, onPageChange }: Aud
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => {
+              {entries.map((entry, idx) => {
                 const opCfg = OPERATION_CONFIG[entry.operation] ?? OPERATION_CONFIG['UPDATE']!
                 const OpIcon = opCfg.icon
                 const isVoid = entry.operation === 'VOID'
@@ -245,7 +233,7 @@ export function AuditTable({ entries, total, page, pageSize, onPageChange }: Aud
                       borderBottom: '1px solid var(--border-subtle)',
                       backgroundColor: isVoid ? 'rgba(196,30,32,0.06)' : undefined,
                       borderLeft: isVoid ? '3px solid #C41E20' : undefined,
-                      opacity: 0,
+                      ['--audit-row-index' as string]: idx,
                     }}
                   >
                     {/* Data/Hora */}

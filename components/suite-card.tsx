@@ -1,32 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { AlertTriangle, Wrench } from 'lucide-react'
-import { differenceInMinutes } from 'date-fns'
 import { flashCard } from '@/lib/animations'
+import { useTempoDecorrido } from '@/lib/hooks/use-tempo-decorrido'
 import type { SuiteLive, SuiteStatus } from '@/types/dashboard'
 
 interface SuiteCardProps {
   suite: SuiteLive
-}
-
-function useTempoDecorrido(openedAt: string | null | undefined) {
-  const [texto, setTexto] = useState('')
-
-  useEffect(() => {
-    if (!openedAt) return
-    function update() {
-      const diff = differenceInMinutes(new Date(), new Date(openedAt!))
-      const h = Math.floor(diff / 60)
-      const m = diff % 60
-      setTexto(h > 0 ? `${h}h ${m}min` : `${m}min`)
-    }
-    update()
-    const id = setInterval(update, 1000)
-    return () => clearInterval(id)
-  }, [openedAt])
-
-  return texto
+  onClick?: () => void
 }
 
 const STATUS_CONFIG: Record<
@@ -80,12 +62,20 @@ function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
   e.currentTarget.style.setProperty('--my', (e.clientY - rect.top) + 'px')
 }
 
-export function SuiteCard({ suite }: SuiteCardProps) {
+export function SuiteCard({ suite, onClick }: SuiteCardProps) {
   const tempo = useTempoDecorrido(
     suite.status === 'occupied' ? suite.opened_at : undefined
   )
   const prevStatusRef = useRef(suite.status)
   const cardRef = useRef<HTMLDivElement>(null)
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!onClick) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick()
+    }
+  }
 
   useEffect(() => {
     if (prevStatusRef.current !== suite.status) {
@@ -109,13 +99,18 @@ export function SuiteCard({ suite }: SuiteCardProps) {
   return (
     <div
       ref={cardRef}
-      className="rounded-xl p-4 flex flex-col gap-2 transition-all duration-200 hover:scale-[1.01]"
+      className={`rounded-xl p-4 flex flex-col gap-2 transition-all duration-200 ${onClick ? 'hover:scale-[1.02] cursor-pointer focus:outline-none focus-visible:ring-2' : 'hover:scale-[1.01]'}`}
       style={{
         backgroundColor: isOvertime ? 'rgba(196,30,32,0.08)' : 'var(--bg-surface)',
         border: '1px solid var(--border-subtle)',
         borderLeft: `4px solid ${cfg.borderColor}`,
         position: 'relative',
       }}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `Ver detalhes da suíte ${suite.numero}` : undefined}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
       onMouseMove={handleMouseMove}
     >
       {/* Header */}

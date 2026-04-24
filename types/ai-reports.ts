@@ -62,6 +62,7 @@ export interface ReportData {
 
   movimentacoesEstoque: number
   itensAbaixoMinimo: ItemEstoque[]
+  itensMaisVendidos: ItemVendido[]
 
   totalEventosAudit: number
   voidsPorFuncionario: FuncionarioContagem[]
@@ -96,6 +97,11 @@ export interface ItemEstoque {
 }
 
 export interface FuncionarioContagem {
+  nome: string
+  quantidade: number
+}
+
+export interface ItemVendido {
   nome: string
   quantidade: number
 }

@@ -113,6 +113,7 @@ export function ReportSection({ reports: initialReports }: ReportSectionProps) {
       </div>
 
       <ReportDrawer
+        key={selected?.id ?? 'closed'}
         report={selected}
         open={!!selected}
         onClose={() => setSelected(null)}

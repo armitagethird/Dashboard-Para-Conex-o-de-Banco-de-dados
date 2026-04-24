@@ -29,7 +29,7 @@ export async function getHomeData(): Promise<HomeData> {
       .limit(5),
     supabase
       .from('stays')
-      .select('valor_total')
+      .select('price')
       .eq('payment_status', 'confirmed')
       .gte('opened_at', new Date().toISOString().split('T')[0] ?? ''),
   ])
@@ -42,7 +42,7 @@ export async function getHomeData(): Promise<HomeData> {
       cleaning:    suites.filter((s) => s.status === 'cleaning').length,
       maintenance: suites.filter((s) => s.status === 'maintenance').length,
     },
-    receitaHoje: (receitaRes.data ?? []).reduce((sum, r) => sum + (r.valor_total ?? 0), 0),
+    receitaHoje: (receitaRes.data ?? []).reduce((sum, r) => sum + (r.price ?? 0), 0),
     turnosAbertos: turnosRes.data?.length ?? 0,
     alertas: (alertasRes.data ?? []) as AlertaPendente[],
     auditRecente: (auditRes.data ?? []) as HomeData['auditRecente'],

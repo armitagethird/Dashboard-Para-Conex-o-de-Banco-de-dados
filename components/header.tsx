@@ -5,21 +5,21 @@ import { Menu, Bell } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { RealtimeDot } from './realtime-dot'
+import { useConnectionStatus } from './connection-status-provider'
 
 interface HeaderProps {
   pageTitle: string
   alertCount?: number
-  realtimeStatus?: 'connected' | 'disconnected' | 'connecting'
   onMenuToggle?: () => void
 }
 
 export function Header({
   pageTitle,
   alertCount = 0,
-  realtimeStatus = 'connecting',
   onMenuToggle,
 }: HeaderProps) {
   const [clock, setClock] = useState('')
+  const { status, latencyMs } = useConnectionStatus()
 
   useEffect(() => {
     function tick() {
@@ -62,7 +62,7 @@ export function Header({
 
       {/* Center */}
       <div className="hidden sm:flex">
-        <RealtimeDot status={realtimeStatus} />
+        <RealtimeDot status={status} latencyMs={latencyMs} />
       </div>
 
       {/* Right */}

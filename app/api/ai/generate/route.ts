@@ -146,6 +146,23 @@ async function saveAndRespond(
         output_tokens: gemini.outputTokens,
         duration_ms: duration,
         generated_at: new Date().toISOString(),
+        data_snapshot: {
+          receita_confirmada: data.receitaConfirmada,
+          receita_pendente: data.receitaPendente,
+          receita_em_aberto: data.situacaoAtual.receitaEmAberto,
+          atendimentos_total: data.totalAtendimentos,
+          atendimentos_concluidos: data.atendimentosConcluidos,
+          atendimentos_voidados: data.atendimentosVoidados,
+          ticket_medio: data.ticketMedio,
+          stays_abertas_agora: data.situacaoAtual.totalEmUso,
+          suite_top: data.suitesMaisUsadas[0]
+            ? `Suíte ${data.suitesMaisUsadas[0].numero} (${data.suitesMaisUsadas[0].atendimentos}x)`
+            : null,
+          item_top: data.itensMaisVendidos[0]
+            ? `${data.itensMaisVendidos[0].nome} (${data.itensMaisVendidos[0].quantidade})`
+            : null,
+          turnos_com_divergencia: data.turnosComDivergencia,
+        },
       },
     })
     .select()

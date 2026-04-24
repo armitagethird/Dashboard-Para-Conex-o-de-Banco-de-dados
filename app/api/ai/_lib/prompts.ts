@@ -67,105 +67,64 @@ export function buildDailyPrompt(data: ReportData, referenceDate: Date): string 
       .map(([forma, qtd]) => `${forma}: ${qtd}x`)
       .join(' · ') || 'nenhum pagamento confirmado'
 
-  const equipeLinhas =
-    data.turnos.length === 0
-      ? 'Nenhum turno registrado neste dia.'
-      : data.turnos
-          .map((t) => {
-            const divStr =
-              t.diferenca !== null && Math.abs(t.diferenca) > 0
-                ? ` ⚠ DIFERENÇA DE CAIXA: ${brl(Math.abs(t.diferenca))} ${t.diferenca < 0 ? 'a menos' : 'a mais'}`
-                : ' ✓ caixa fechou certinho'
-            const status = t.fim ? 'turno encerrado' : 'ainda em andamento'
-            return `- ${t.funcionario} (${status})${divStr}`
-          })
-          .join('\n')
-
-  const cancelamentosStr =
-    data.voidsPorFuncionario.length === 0
-      ? 'Nenhum atendimento cancelado no dia.'
-      : data.voidsPorFuncionario
-          .map(
-            (v) =>
-              `- ${v.nome}: ${v.quantidade} cancelamento${v.quantidade > 1 ? 's' : ''}`
-          )
-          .join('\n')
-
-  const estoqueStr =
-    data.itensAbaixoMinimo.length === 0
-      ? 'Estoque em dia, nada precisando de reposição.'
-      : data.itensAbaixoMinimo
-          .map(
-            (i) =>
-              `- ${i.nome}: ${i.qtdAtual} restantes (mínimo recomendado: ${i.minimo})`
-          )
-          .join('\n')
+  const suiteTop = data.suitesMaisUsadas[0]
+  const itemTop = data.itensMaisVendidos[0]
 
   const alertas: string[] = []
   if (data.cancelamentosExcessivos) {
-    alertas.push(
-      '⚠ ATENÇÃO IMPORTANTE: Há funcionário(s) com 3 ou mais cancelamentos hoje. Isso foge muito do normal — mencione com destaque e recomende investigar.'
-    )
+    alertas.push('⚠ Funcionário(s) com 3+ cancelamentos — destaque e recomende investigar.')
   }
   if (data.turnosComDivergencia > 0) {
-    alertas.push(
-      `⚠ ATENÇÃO: ${data.turnosComDivergencia} turno(s) fecharam com diferença de caixa. Mencione o nome do funcionário e o valor exato.`
-    )
+    alertas.push(`⚠ ${data.turnosComDivergencia} turno(s) com diferença de caixa — mencione nome e valor.`)
   }
   if (data.itensAbaixoMinimo.length > 0) {
-    alertas.push('⚠ Itens abaixo do estoque mínimo — recomende providenciar reposição.')
+    alertas.push('⚠ Itens abaixo do estoque mínimo — recomende reposição.')
   }
 
   return `
-Escreva o RELATÓRIO DIÁRIO do Paraíso Motel referente a ${diaSemana}, ${dataFull}.
+Escreva o RESUMO DIÁRIO do Paraíso Motel referente a ${diaSemana}, ${dataFull}.
 
-ESTRUTURA (siga esta ordem, sem usar títulos de seção visíveis — escreva como texto corrido):
-1. Abrir com uma saudação rápida e o resumo do dia em 1-2 frases
-2. Movimento do dia: quantos atendimentos, receita, formas de pagamento
-3. Equipe e caixa: quem trabalhou e como foi o fechamento
-4. Cancelamentos (se houver — dar contexto)
-5. Estoque (só mencionar se houver alerta)
-6. Fechar com avaliação curta do dia e, se pertinente, uma recomendação
+FORMATO — OBRIGATÓRIO:
+- Texto corrido, parágrafos curtos (máx. 3 linhas cada).
+- Entre 3 e 5 parágrafos no total. Máximo 280 palavras.
+- NÃO use títulos com ## ou #. NÃO use listas ou bullets.
+
+CONTEÚDO — OBRIGATÓRIO MENCIONAR (com números exatos):
+1. Receita confirmada do dia em R$ (valor exato fornecido abaixo).
+2. Quantidade de atendimentos concluídos no dia.
+3. Ticket médio em R$.
+4. ${suiteTop ? `Suíte mais procurada hoje: Suíte ${suiteTop.numero} (${suiteTop.atendimentos} entrada${suiteTop.atendimentos > 1 ? 's' : ''}).` : 'Se houve movimento, cite a suíte com mais entradas.'}
+5. ${itemTop ? `Item mais vendido do frigobar/cardápio: ${itemTop.nome} (${itemTop.quantidade} unidades).` : 'Se houve venda de itens, cite o mais pedido.'}
+6. ${data.situacaoAtual.temStaysAbertas ? `Situação atual: ${data.situacaoAtual.totalEmUso} suíte(s) ainda em uso com receita em aberto de ${brl(data.situacaoAtual.receitaEmAberto)} — mencione isso no fechamento.` : 'Não há stays abertas agora.'}
+7. Destaque da equipe: diferenças de caixa ou cancelamentos fora do padrão.
+8. Um ponto de atenção para amanhã (se houver).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${buildSituacaoAtualBloco(data.situacaoAtual)}
 
 DADOS DO DIA:
-
-MOVIMENTO:
-- Atendimentos abertos hoje: ${data.totalAtendimentos}
-- Concluídos: ${data.atendimentosConcluidos}
-- Cancelados: ${data.atendimentosVoidados}
-- Receita confirmada: ${brl(data.receitaConfirmada)}
-- Receita pendente: ${brl(data.receitaPendente)}
+- Atendimentos: ${data.totalAtendimentos} (concluídos: ${data.atendimentosConcluidos} · cancelados: ${data.atendimentosVoidados})
+- Receita confirmada: ${brl(data.receitaConfirmada)} · pendente: ${brl(data.receitaPendente)}
 - Ticket médio: ${brl(data.ticketMedio)}
-- Formas de pagamento usadas hoje: ${pagamentos}
-
-SUÍTES MAIS MOVIMENTADAS:
-${
-  data.suitesMaisUsadas.length > 0
-    ? data.suitesMaisUsadas
-        .map(
-          (s) =>
-            `- Suíte ${s.numero} (${s.tipo}): ${s.atendimentos} entrada${s.atendimentos > 1 ? 's' : ''}`
-        )
-        .join('\n')
-    : '- Dados não disponíveis'
-}
-
-EQUIPE E CAIXA:
-${equipeLinhas}
-
-CANCELAMENTOS:
-${cancelamentosStr}
-
-ESTOQUE:
-${estoqueStr}
+- Formas de pagamento: ${pagamentos}
+- Suítes mais procuradas: ${data.suitesMaisUsadas.map((s) => `Suíte ${s.numero} (${s.atendimentos}x)`).join(' · ') || 'sem dados'}
+- Itens mais vendidos (frigobar/cardápio): ${data.itensMaisVendidos.map((i) => `${i.nome} (${i.quantidade})`).join(' · ') || 'sem vendas'}
+- Turnos com diferença de caixa: ${data.turnosComDivergencia}
+- Cancelamentos por funcionário: ${
+    data.voidsPorFuncionario.length > 0
+      ? data.voidsPorFuncionario.map((v) => `${v.nome} (${v.quantidade})`).join(', ')
+      : 'nenhum ✓'
+  }
+- Estoque abaixo do mínimo: ${
+    data.itensAbaixoMinimo.length === 0
+      ? 'em dia'
+      : data.itensAbaixoMinimo.map((i) => `${i.nome} ${i.qtdAtual}/${i.minimo}`).join(', ')
+  }
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${alertas.length > 0 ? alertas.join('\n') : ''}
 
-Escreva o relatório agora. Linguagem humana, texto corrido, parágrafos curtos.
+Escreva o resumo agora. Direto ao ponto — e cite OBRIGATORIAMENTE os 6 números/destaques da lista acima.
 `.trim()
 }
 
@@ -184,95 +143,61 @@ export function buildWeeklyPrompt(data: ReportData): string {
       ? pct((data.atendimentosVoidados / data.totalAtendimentos) * 100)
       : '0%'
 
-  const equipeResume =
-    data.turnos.length === 0
-      ? 'Nenhum turno registrado na semana.'
-      : data.turnos
-          .map((t) => {
-            const div =
-              t.diferenca !== null && Math.abs(t.diferenca) > 0
-                ? ` | diferença de caixa: ${brl(Math.abs(t.diferenca))}`
-                : ' | caixa OK'
-            return `- ${t.funcionario}${div}`
-          })
-          .join('\n')
+  const suiteTop = data.suitesMaisUsadas[0]
+  const itemTop = data.itensMaisVendidos[0]
 
   const alertas: string[] = []
   if (data.cancelamentosExcessivos) {
-    alertas.push(
-      '⚠ PADRÃO SUSPEITO: Um ou mais funcionários com 3+ cancelamentos na semana. Analise com atenção e recomende ação concreta ao dono.'
-    )
+    alertas.push('⚠ Funcionário(s) com 3+ cancelamentos na semana — padrão suspeito, recomende ação.')
   }
   if (data.turnosComDivergencia >= 2) {
-    alertas.push(
-      `⚠ RECORRÊNCIA: ${data.turnosComDivergencia} turnos com diferença de caixa na mesma semana. Recomende revisão do processo de fechamento.`
-    )
+    alertas.push(`⚠ ${data.turnosComDivergencia} turnos com diferença de caixa — recomende revisão do processo.`)
   }
 
   return `
-Escreva o RELATÓRIO SEMANAL do Paraíso Motel referente ao período de ${inicio} a ${fim}.
+Escreva o RESUMO SEMANAL do Paraíso Motel referente ao período de ${inicio} a ${fim}.
 
-ESTRUTURA:
-1. Balanço geral da semana (2-3 frases de abertura)
-2. Receita e movimento: foi uma boa semana? O ritmo foi constante?
-3. Análise da equipe: quem se destacou, quem teve problemas
-4. Suítes: quais mais trabalharam, taxa de ocupação
-5. Pontos de atenção (se houver anomalias)
-6. Recomendações práticas para a próxima semana (pelo menos 1)
+FORMATO — OBRIGATÓRIO:
+- Texto corrido, parágrafos curtos (máx. 3 linhas).
+- Entre 4 e 6 parágrafos. Máximo 420 palavras.
+- NÃO use títulos com ## ou #. NÃO use listas.
+
+CONTEÚDO — OBRIGATÓRIO MENCIONAR (com números exatos):
+1. Receita total confirmada da semana em R$.
+2. Total de atendimentos e taxa de cancelamento em %.
+3. Ticket médio da semana em R$.
+4. ${suiteTop ? `Suíte mais usada na semana: Suíte ${suiteTop.numero} (${suiteTop.atendimentos} atendimentos).` : 'Cite a suíte com mais atendimentos.'}
+5. ${itemTop ? `Item mais vendido na semana: ${itemTop.nome} (${itemTop.quantidade} unidades).` : 'Se houve vendas, cite o item mais pedido.'}
+6. Destaques de equipe (diferenças de caixa, cancelamentos).
+7. Pelo menos 1 recomendação concreta para a próxima semana.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${buildSituacaoAtualBloco(data.situacaoAtual)}
 
 DADOS DA SEMANA:
-
-FINANCEIRO:
-- Total de atendimentos: ${data.totalAtendimentos}
-- Concluídos: ${data.atendimentosConcluidos} | Cancelados: ${data.atendimentosVoidados} (${txCancelamento})
-- Receita confirmada: ${brl(data.receitaConfirmada)}
-- Receita pendente: ${brl(data.receitaPendente)}
+- Atendimentos: ${data.totalAtendimentos} (concluídos: ${data.atendimentosConcluidos} · cancelados: ${data.atendimentosVoidados} = ${txCancelamento})
+- Receita confirmada: ${brl(data.receitaConfirmada)} · pendente: ${brl(data.receitaPendente)}
 - Ticket médio: ${brl(data.ticketMedio)}
-- Formas de pagamento: ${Object.entries(data.distribuicaoPagamento)
-    .map(([f, q]) => `${f}: ${q}x`)
-    .join(' · ') || '—'}
-
-EQUIPE (${data.turnos.length} turnos na semana):
-${equipeResume}
-- Turnos com diferença de caixa: ${data.turnosComDivergencia}
-
-CANCELAMENTOS POR FUNCIONÁRIO:
-${
-  data.voidsPorFuncionario.length > 0
-    ? data.voidsPorFuncionario
-        .map(
-          (v) =>
-            `- ${v.nome}: ${v.quantidade} cancelamento${v.quantidade > 1 ? 's' : ''}`
-        )
-        .join('\n')
-    : '- Nenhum cancelamento na semana ✓'
-}
-
-SUÍTES:
-- Mais usadas: ${
-  data.suitesMaisUsadas
-    .map((s) => `Suíte ${s.numero} (${s.tipo}): ${s.atendimentos}x`)
-    .join(' · ') || '—'
-}
+- Formas de pagamento: ${Object.entries(data.distribuicaoPagamento).map(([f, q]) => `${f}: ${q}x`).join(' · ') || '—'}
+- Turnos na semana: ${data.turnos.length} · com diferença de caixa: ${data.turnosComDivergencia}
+- Cancelamentos por funcionário: ${
+    data.voidsPorFuncionario.length > 0
+      ? data.voidsPorFuncionario.map((v) => `${v.nome} (${v.quantidade})`).join(', ')
+      : 'nenhum ✓'
+  }
+- Suítes mais usadas: ${data.suitesMaisUsadas.map((s) => `Suíte ${s.numero}: ${s.atendimentos}x`).join(' · ') || '—'}
+- Itens mais vendidos: ${data.itensMaisVendidos.map((i) => `${i.nome} (${i.quantidade})`).join(' · ') || 'sem vendas'}
 - Taxa de ocupação atual: ${pct(data.taxaOcupacao)}
-
-ESTOQUE:
-- Movimentações na semana: ${data.movimentacoesEstoque}
-- Itens abaixo do mínimo: ${
-  data.itensAbaixoMinimo.length > 0
-    ? data.itensAbaixoMinimo
-        .map((i) => `${i.nome} (${i.qtdAtual}/${i.minimo})`)
-        .join(', ')
-    : 'nenhum ✓'
-}
+- Estoque abaixo do mínimo: ${
+    data.itensAbaixoMinimo.length > 0
+      ? data.itensAbaixoMinimo.map((i) => `${i.nome} (${i.qtdAtual}/${i.minimo})`).join(', ')
+      : 'nenhum ✓'
+  }
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${alertas.length > 0 ? alertas.join('\n') : ''}
 
-Escreva um relatório rico, analítico e útil. O dono precisa entender a semana de forma clara.
+Escreva o resumo agora. Cite OBRIGATORIAMENTE os 5 números-chave listados acima. O dono lê em 1 minuto.
 `.trim()
 }
 
@@ -289,35 +214,39 @@ export function buildMonthlyPrompt(data: ReportData): string {
 
   const alertas: string[] = []
   if (data.cancelamentosExcessivos) {
-    alertas.push(
-      '⚠ AÇÃO NECESSÁRIA: Padrão de cancelamentos excessivos identificado no mês. Proponha uma conversa com os envolvidos e descreva um plano de acompanhamento.'
-    )
+    alertas.push('⚠ Padrão de cancelamentos excessivos no mês — proponha conversa com os envolvidos e plano de acompanhamento.')
   }
   if (data.turnosComDivergencia > 3) {
-    alertas.push(
-      '⚠ PROBLEMA SISTÊMICO: Mais de 3 divergências de caixa no mês. Sugira uma revisão completa do processo de fechamento e conferência dupla.'
-    )
+    alertas.push('⚠ Mais de 3 divergências de caixa no mês — sugira revisão do processo de fechamento e conferência dupla.')
   }
   if (data.itensAbaixoMinimo.length > 2) {
-    alertas.push(
-      '⚠ ESTOQUE: Múltiplos itens abaixo do mínimo. Sugira uma revisão das quantidades mínimas configuradas e um pedido de reposição urgente.'
-    )
+    alertas.push('⚠ Múltiplos itens de estoque abaixo do mínimo — revisão de quantidades mínimas e pedido urgente.')
   }
 
   return `
-Escreva o RELATÓRIO MENSAL do Paraíso Motel referente a ${mesAno}.
+Escreva o RELATÓRIO MENSAL DETALHADO do Paraíso Motel referente a ${mesAno}.
 
-Este é o relatório mais importante do mês. O dono usa ele para tomar decisões estratégicas sobre o negócio — equipe, estoque, preços, operação.
+Este é o documento mais importante do mês. O dono usa para decisões estratégicas — equipe, estoque, preços, operação.
 
-ESTRUTURA:
-1. Resumo executivo do mês (3-4 frases que capturam a essência)
-2. Desempenho financeiro: receita, ticket médio, evolução, formas de pagamento
-3. Operação: ocupação das suítes, quais mais renderam, padrões
-4. Equipe: desempenho, confiabilidade, pontos de atenção (direto e concreto)
-5. Estoque: o que consumiu mais, o que precisa de atenção
-6. Anomalias e padrões do mês (se houver — análise profunda)
-7. Pontos positivos do mês (celebrar o que foi bem)
-8. Ações recomendadas para o próximo mês (pelo menos 2 concretas)
+FORMATO — OBRIGATÓRIO:
+- Divida o relatório em 6 seções, cada uma iniciada com título em markdown usando duplo hashtag. Exatamente:
+
+## Visão geral
+## Receita e movimento
+## Suítes mais usadas
+## Turnos e divergências de caixa
+## Estoque
+## Anomalias e recomendações
+
+- Cada seção deve ter entre 2 e 4 parágrafos curtos (máx. 4 linhas cada).
+- Não use listas com bullet (-) ou numeradas. Escreva em texto corrido.
+- Seja específico e analítico: mencione nomes, números, valores exatos, percentuais, comparativos.
+- "Visão geral": 2-3 parágrafos que resumem o mês — receita total, ticket médio, volume, saúde geral do negócio.
+- "Receita e movimento": detalhar padrão de receita, formas de pagamento preferidas, proporção concluídos/cancelados.
+- "Suítes mais usadas": top suítes com números concretos e o que isso sugere (ocupação desbalanceada? Todas girando igual?).
+- "Turnos e divergências de caixa": quantos turnos, divergências com nomes dos funcionários quando houver, padrão.
+- "Estoque": cite o item mais vendido do frigobar/cardápio com quantidade exata, o que está abaixo do mínimo, itens críticos, movimentações.
+- "Anomalias e recomendações": pontos de atenção do mês + pelo menos 3 ações concretas para o próximo mês.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${buildSituacaoAtualBloco(data.situacaoAtual)}
@@ -330,47 +259,67 @@ FINANCEIRO:
 - Receita total confirmada: ${brl(data.receitaConfirmada)}
 - Receita pendente: ${brl(data.receitaPendente)}
 - Ticket médio: ${brl(data.ticketMedio)}
-- Formas de pagamento preferidas: ${
-  Object.entries(data.distribuicaoPagamento)
-    .map(([f, q]) => `${f}: ${q}x`)
-    .join(' · ') || '—'
-}
+- Formas de pagamento: ${
+    Object.entries(data.distribuicaoPagamento)
+      .map(([f, q]) => `${f}: ${q}x`)
+      .join(' · ') || '—'
+  }
 
 OPERACIONAL:
 - Turnos trabalhados: ${data.turnos.length}
 - Turnos com diferença de caixa: ${data.turnosComDivergencia}
 - Taxa de ocupação atual: ${pct(data.taxaOcupacao)} (${data.suitesOcupadas} de ${data.suitesTotais} suítes)
 - Suítes mais usadas: ${
-  data.suitesMaisUsadas
-    .map((s) => `Suíte ${s.numero}: ${s.atendimentos}x`)
-    .join(' · ') || '—'
+    data.suitesMaisUsadas
+      .map((s) => `Suíte ${s.numero} (${s.tipo}): ${s.atendimentos}x`)
+      .join(' · ') || '—'
+  }
+
+EQUIPE — TURNOS E CANCELAMENTOS:
+${
+  data.turnos.length > 0
+    ? data.turnos
+        .map((t) => {
+          const div =
+            t.diferenca !== null && Math.abs(t.diferenca) > 0
+              ? ` — diferença ${brl(Math.abs(t.diferenca))} ${t.diferenca < 0 ? 'a menos' : 'a mais'}`
+              : ''
+          return `- ${t.funcionario}${div}`
+        })
+        .join('\n')
+    : '- Nenhum turno registrado'
 }
 
-EQUIPE — CANCELAMENTOS NO MÊS:
+Cancelamentos por funcionário:
 ${
   data.voidsPorFuncionario.length > 0
     ? data.voidsPorFuncionario
-        .map(
-          (v) =>
-            `- ${v.nome}: ${v.quantidade} cancelamento${v.quantidade > 1 ? 's' : ''}`
-        )
+        .map((v) => `- ${v.nome}: ${v.quantidade}`)
         .join('\n')
     : '- Sem cancelamentos ✓'
 }
 
 ESTOQUE:
 - Movimentações no mês: ${data.movimentacoesEstoque}
-- Itens que precisam de reposição: ${
-  data.itensAbaixoMinimo.length > 0
-    ? data.itensAbaixoMinimo
-        .map((i) => `${i.nome} (atual: ${i.qtdAtual}, mínimo: ${i.minimo})`)
-        .join(', ')
-    : 'nenhum — estoque em dia ✓'
-}
+- Itens mais vendidos do mês: ${
+    data.itensMaisVendidos.length > 0
+      ? data.itensMaisVendidos.map((i) => `${i.nome} (${i.quantidade})`).join(' · ')
+      : 'sem vendas registradas'
+  }
+- Itens abaixo do mínimo: ${
+    data.itensAbaixoMinimo.length > 0
+      ? data.itensAbaixoMinimo
+          .map((i) => `${i.nome} (atual: ${i.qtdAtual}, mínimo: ${i.minimo})`)
+          .join(', ')
+      : 'nenhum — estoque em dia ✓'
+  }
+
+AUDITORIA:
+- Total de eventos auditados no mês: ${data.totalEventosAudit}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${alertas.length > 0 ? alertas.join('\n') : ''}
 
-Escreva um relatório gerencial completo. Rico, analítico, útil. Português humano.
+Escreva o relatório completo agora, SEGUINDO RIGOROSAMENTE o formato de 6 seções com ## acima. Português humano, analítico, com dados concretos.
 `.trim()
 }

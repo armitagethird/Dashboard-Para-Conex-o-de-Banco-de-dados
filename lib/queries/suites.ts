@@ -8,12 +8,20 @@ export async function getSuitesLive(): Promise<SuiteLive[]> {
     .select('*')
     .order('numero')
   if (error) throw error
-  const seen = new Set<string>()
-  return (data ?? []).filter((row) => {
-    if (seen.has(row.id)) return false
-    seen.add(row.id)
-    return true
-  }) as SuiteLive[]
+
+  // Dedupe por suite.id mantendo sempre a stay mais recente (maior opened_at).
+  const byId = new Map<string, SuiteLive>()
+  for (const row of (data ?? []) as SuiteLive[]) {
+    const existing = byId.get(row.id)
+    if (!existing) {
+      byId.set(row.id, row)
+      continue
+    }
+    const existingTime = existing.opened_at ? new Date(existing.opened_at).getTime() : 0
+    const rowTime = row.opened_at ? new Date(row.opened_at).getTime() : 0
+    if (rowTime > existingTime) byId.set(row.id, row)
+  }
+  return Array.from(byId.values()).sort((a, b) => a.numero - b.numero)
 }
 
 export async function getAlertasPendentes(): Promise<AlertaPendente[]> {

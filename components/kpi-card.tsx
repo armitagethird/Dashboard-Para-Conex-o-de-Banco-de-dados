@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { RealtimeDot } from './realtime-dot'
+import { useConnectionStatus } from './connection-status-provider'
 import { animateCounter } from '@/lib/animations'
 import { formatBRL } from '@/lib/utils'
 
@@ -36,6 +37,7 @@ export function KpiCard({
 }: KpiCardProps) {
   const valueColor = highlight ? 'var(--danger)' : VARIANT_COLOR[variant]
   const valueRef = useRef<HTMLSpanElement>(null)
+  const { status, latencyMs } = useConnectionStatus()
 
   useEffect(() => {
     if (!valueRef.current || typeof numericValue !== 'number') return
@@ -78,7 +80,7 @@ export function KpiCard({
         </span>
         <div className="flex items-center gap-2">
           {Icon && <Icon className="w-4 h-4" style={{ color: highlight ? 'var(--danger)' : 'var(--text-tertiary)' }} />}
-          {live && <RealtimeDot status="connected" />}
+          {live && <RealtimeDot status={status} latencyMs={latencyMs} />}
         </div>
       </div>
 

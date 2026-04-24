@@ -1,7 +1,6 @@
 export type SuiteStatus = 'free' | 'occupied' | 'cleaning' | 'maintenance'
 export type UserRole = 'receptionist' | 'manager' | 'owner'
 export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'voided'
-export type StayStatus = 'open' | 'closed' | 'voided'
 export type AlertaSeveridade = 'critica' | 'alta' | 'media' | 'baixa'
 export type AlertaTipo =
   | 'divergencia_caixa'

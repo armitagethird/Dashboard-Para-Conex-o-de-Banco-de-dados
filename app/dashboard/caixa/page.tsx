@@ -7,6 +7,7 @@ import { KpiCard } from '@/components/kpi-card'
 import { RevenueChart } from '@/components/revenue-chart'
 import { ShiftTable } from '@/components/shift-table'
 import { Header } from '@/components/header'
+import { LiveRefresher } from '@/components/live-refresher'
 import { formatBRL } from '@/lib/utils'
 import LoadingCaixa from './loading'
 
@@ -14,6 +15,8 @@ export const metadata: Metadata = {
   title: 'Caixa · Paraíso Motel',
   robots: { index: false, follow: false },
 }
+
+export const dynamic = 'force-dynamic'
 
 const METHOD_LABEL: Record<string, string> = {
   cash:  'Dinheiro',
@@ -37,15 +40,15 @@ async function CaixaContent() {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Receita Total"
+          label="Receita de hoje"
           value={formatBRL(totalReceita)}
-          sublabel={`${totalAtendimentos} atendimentos`}
+          sublabel={`${totalAtendimentos} atendimentos confirmados`}
           live
         />
         <KpiCard
-          label="Atendimentos"
+          label="Atendimentos de hoje"
           value={String(totalAtendimentos)}
-          sublabel="No dia atual"
+          sublabel="Confirmados no dia"
         />
         {/* Breakdown por método */}
         <div
@@ -91,7 +94,7 @@ async function CaixaContent() {
           className="text-xs font-medium uppercase tracking-widest mb-3"
           style={{ color: 'var(--text-secondary)' }}
         >
-          Turnos — últimos 7 dias
+          Turnos em andamento
         </p>
         <ShiftTable turnos={turnos} />
       </div>
@@ -103,6 +106,7 @@ export default function CaixaPage() {
   return (
     <div className="flex flex-col h-full">
       <Header pageTitle="Caixa & Turnos" />
+      <LiveRefresher channelName="caixa-live" tables={['stays', 'shifts']} />
       <Suspense fallback={<LoadingCaixa />}>
         <CaixaContent />
       </Suspense>

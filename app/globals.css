@@ -114,6 +114,16 @@ html, body {
   to   { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes auditRowEnter {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.audit-row {
+  animation: auditRowEnter 0.35s ease-out both;
+  animation-delay: calc(var(--audit-row-index, 0) * 30ms);
+}
+
 .skeleton {
   background: linear-gradient(
     90deg,

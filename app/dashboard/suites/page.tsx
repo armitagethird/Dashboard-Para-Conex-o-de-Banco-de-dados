@@ -10,12 +10,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function SuitesPage() {
   const suites = await getSuitesLive()
 
   return (
     <div className="flex flex-col h-full">
-      <Header pageTitle="Suítes ao Vivo" realtimeStatus="connecting" />
+      <Header pageTitle="Suítes ao Vivo" />
       <Suspense fallback={<LoadingSuites />}>
         <SuiteGrid initialSuites={suites} />
       </Suspense>
