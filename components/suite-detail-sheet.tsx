@@ -1,15 +1,17 @@
 'use client'
 
-import { AlertTriangle, Clock, CreditCard, User, Wrench } from 'lucide-react'
+import { AlertTriangle, Clock, CreditCard, Moon, Receipt, User, Wrench } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { useCobranca } from '@/lib/hooks/use-cobranca'
 import { useTempoDecorrido } from '@/lib/hooks/use-tempo-decorrido'
 import { formatPaymentMethod } from '@/lib/payment-methods'
 import { formatBRL, formatDate, formatRelative } from '@/lib/utils'
+import { formatTempoRestante, type Cobranca } from '@/lib/billing'
 import type { SuiteLive, SuiteStatus, AlertaPendente, AlertaSeveridade } from '@/types/dashboard'
 
 interface SuiteDetailSheetProps {
@@ -68,8 +70,8 @@ function SuiteDetailBody({ suite, alertas }: { suite: SuiteLive; alertas: Alerta
   const tempoOcupada = useTempoDecorrido(
     suite.status === 'occupied' ? suite.opened_at : undefined
   )
+  const cobranca = useCobranca(suite)
 
-  const precoPernoite = suite.precos?.pernoite
   const hasAnyPreco = PRECO_ORDER.some((k) => suite.precos?.[k] != null)
 
   return (
@@ -202,15 +204,9 @@ function SuiteDetailBody({ suite, alertas }: { suite: SuiteLive; alertas: Alerta
                   value={formatPaymentMethod(suite.payment_method)}
                 />
               )}
-              {precoPernoite != null && (
-                <InfoRow
-                  icon={<CreditCard className="w-4 h-4" />}
-                  label="Valor pernoite"
-                  value={formatBRL(precoPernoite)}
-                  valueFont="mono"
-                />
-              )}
             </div>
+
+            {cobranca && <CobrancaBlock cobranca={cobranca} />}
           </div>
         )}
 
@@ -302,4 +298,126 @@ function formatMinutos(min: number): string {
   const h = Math.floor(min / 60)
   const m = min % 60
   return h > 0 ? `${h}h ${m}min` : `${m}min`
+}
+
+function CobrancaBlock({ cobranca }: { cobranca: Cobranca }) {
+  const isPernoite = cobranca.isPernoite
+  const p = cobranca.pernoite
+  const horas = cobranca.horista?.horasExtras ?? 0
+
+  // Banner de status (quando pernoite)
+  let banner: { color: string; bg: string; titulo: string; sub?: string } | null = null
+  if (isPernoite && p) {
+    if (p.fase === 'pre') {
+      banner = {
+        color: '#F59E0B',
+        bg: 'rgba(245,158,11,0.10)',
+        titulo: 'Pré-pernoite · adicional em andamento',
+        sub: `${p.horasPreMidnight}h iniciada(s) antes da meia-noite × R$15`,
+      }
+    } else if (p.fase === 'expirando') {
+      banner = {
+        color: '#C41E20',
+        bg: 'rgba(196,30,32,0.10)',
+        titulo: `Checkout em ${formatTempoRestante(p.msAteCheckout)}`,
+        sub: `Pernoite ativo · checkout fixo às 06:00`,
+      }
+    } else if (p.fase === 'ativo') {
+      banner = {
+        color: '#22C55E',
+        bg: 'rgba(34,197,94,0.10)',
+        titulo: 'Pernoite ativo',
+        sub: `Checkout às 06:00 · ${formatTempoRestante(p.msAteCheckout)} restantes`,
+      }
+    } else {
+      banner = {
+        color: '#C41E20',
+        bg: 'rgba(196,30,32,0.10)',
+        titulo: 'Pernoite em overtime',
+        sub:
+          p.horasOvertime > 0
+            ? `${p.horasOvertime}h iniciada(s) após 06:00 × R$15`
+            : 'Hóspede passou do checkout fixo das 06:00',
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs uppercase tracking-widest font-medium" style={{ color: 'var(--text-tertiary)' }}>
+        Cobrança em tempo real
+      </p>
+
+      {banner && (
+        <div
+          className="rounded-lg p-3 flex gap-3"
+          style={{ background: banner.bg, borderLeft: `3px solid ${banner.color}` }}
+        >
+          <Moon className="w-4 h-4 shrink-0 mt-0.5" style={{ color: banner.color }} />
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              {banner.titulo}
+            </p>
+            {banner.sub && (
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {banner.sub}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg p-4 space-y-3" style={{ background: 'var(--bg-elevated)' }}>
+        <InfoRow
+          icon={<Receipt className="w-4 h-4" />}
+          label="Preço base"
+          value={formatBRL(cobranca.precoBase)}
+          valueFont="mono"
+        />
+        {!isPernoite && (
+          <InfoRow
+            icon={<Clock className="w-4 h-4" />}
+            label={horas > 0 ? `Adicional (${horas}h × R$15)` : 'Adicional'}
+            value={formatBRL(cobranca.adicional)}
+            valueFont="mono"
+          />
+        )}
+        {isPernoite && p && p.horasPreMidnight > 0 && (
+          <InfoRow
+            icon={<Clock className="w-4 h-4" />}
+            label={`Pré-pernoite (${p.horasPreMidnight}h × R$15)`}
+            value={formatBRL(p.valorPreMidnight)}
+            valueFont="mono"
+          />
+        )}
+        {isPernoite && p && p.horasOvertime > 0 && (
+          <InfoRow
+            icon={<Clock className="w-4 h-4" />}
+            label={`Pós-checkout (${p.horasOvertime}h × R$15)`}
+            value={formatBRL(p.valorOvertime)}
+            valueFont="mono"
+          />
+        )}
+        {isPernoite && p && p.horasPreMidnight === 0 && p.horasOvertime === 0 && (
+          <InfoRow
+            icon={<Clock className="w-4 h-4" />}
+            label="Adicional pernoite"
+            value={formatBRL(cobranca.adicional)}
+            valueFont="mono"
+          />
+        )}
+        <div
+          className="pt-3 flex items-center justify-between"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
+          <span className="text-xs uppercase tracking-widest font-medium" style={{ color: 'var(--text-tertiary)' }}>
+            Total atual
+          </span>
+          <span className="font-mono text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+            {formatBRL(cobranca.total)}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
 }

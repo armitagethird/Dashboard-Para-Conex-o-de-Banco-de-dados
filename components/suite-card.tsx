@@ -4,6 +4,9 @@ import { useEffect, useRef } from 'react'
 import { AlertTriangle, Wrench } from 'lucide-react'
 import { flashCard } from '@/lib/animations'
 import { useTempoDecorrido } from '@/lib/hooks/use-tempo-decorrido'
+import { useCobranca } from '@/lib/hooks/use-cobranca'
+import { formatTempoRestante, type Cobranca } from '@/lib/billing'
+import { formatBRL } from '@/lib/utils'
 import type { SuiteLive, SuiteStatus } from '@/types/dashboard'
 
 interface SuiteCardProps {
@@ -66,6 +69,7 @@ export function SuiteCard({ suite, onClick }: SuiteCardProps) {
   const tempo = useTempoDecorrido(
     suite.status === 'occupied' ? suite.opened_at : undefined
   )
+  const cobranca = useCobranca(suite)
   const prevStatusRef = useRef(suite.status)
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -202,10 +206,99 @@ export function SuiteCard({ suite, onClick }: SuiteCardProps) {
           </p>
         )}
 
-      {/* Fallback pernoite for occupied (informativo) */}
-      {suite.status === 'occupied' && precoPernoite != null && (
+      {/* Cobrança em tempo real (substitui o valor estático antigo) */}
+      {suite.status === 'occupied' && cobranca && (
+        <CobrancaFooter cobranca={cobranca} />
+      )}
+      {/* Fallback informativo se não houver cobrança calculável */}
+      {suite.status === 'occupied' && !cobranca && precoPernoite != null && (
         <p className="text-[10px] font-mono" style={{ color: 'var(--text-disabled)' }}>
           Pernoite: R$ {precoPernoite.toFixed(2).replace('.', ',')}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function CobrancaFooter({ cobranca }: { cobranca: Cobranca }) {
+  if (cobranca.isPernoite && cobranca.pernoite) {
+    const p = cobranca.pernoite
+    if (p.fase === 'pre') {
+      return (
+        <div
+          className="pt-2 mt-1 space-y-0.5"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: '#F59E0B' }}>
+            Pré-pernoite · adicional em andamento
+          </p>
+          <p className="font-mono text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+            {formatBRL(cobranca.total)}
+          </p>
+          {p.horasPreMidnight > 0 && (
+            <p className="text-[10px] font-mono" style={{ color: 'var(--text-tertiary)' }}>
+              +{p.horasPreMidnight}h × R$15 = {formatBRL(p.valorPreMidnight)}
+            </p>
+          )}
+        </div>
+      )
+    }
+    if (p.fase === 'expirado') {
+      return (
+        <div
+          className="pt-2 mt-1 space-y-0.5"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: '#C41E20' }}>
+            Pernoite em overtime
+          </p>
+          <p className="font-mono text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+            {formatBRL(cobranca.total)}
+          </p>
+          {p.horasOvertime > 0 && (
+            <p className="text-[10px] font-mono" style={{ color: 'var(--text-tertiary)' }}>
+              +{p.horasOvertime}h pós-06:00 × R$15 = {formatBRL(p.valorOvertime)}
+            </p>
+          )}
+        </div>
+      )
+    }
+    // ativo ou expirando
+    const cor = p.fase === 'expirando' ? '#F59E0B' : 'var(--text-tertiary)'
+    return (
+      <div
+        className="pt-2 mt-1 space-y-0.5"
+        style={{ borderTop: '1px solid var(--border-subtle)' }}
+      >
+        <p className="text-[10px] uppercase tracking-widest" style={{ color: cor }}>
+          {p.fase === 'expirando' ? 'Checkout em breve' : 'Pernoite ativo'}
+        </p>
+        <p className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
+          Checkout 06:00 · {formatTempoRestante(p.msAteCheckout)} restantes
+        </p>
+        <p className="font-mono text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+          {formatBRL(cobranca.total)}
+        </p>
+      </div>
+    )
+  }
+
+  // Horista
+  const horas = cobranca.horista?.horasExtras ?? 0
+  return (
+    <div
+      className="pt-2 mt-1 space-y-0.5"
+      style={{ borderTop: '1px solid var(--border-subtle)' }}
+    >
+      <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
+        Total acumulado
+      </p>
+      <p className="font-mono text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+        {formatBRL(cobranca.total)}
+      </p>
+      {horas > 0 && (
+        <p className="text-[10px] font-mono" style={{ color: 'var(--text-tertiary)' }}>
+          +{horas}h × R$15 = {formatBRL(cobranca.adicional)}
         </p>
       )}
     </div>

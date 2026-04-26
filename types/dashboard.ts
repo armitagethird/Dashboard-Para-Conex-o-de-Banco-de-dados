@@ -8,6 +8,7 @@ export type AlertaTipo =
   | 'suite_longa'
   | 'void_excessivo'
   | 'estoque_divergente'
+  | 'pernoite_overtime'
 
 export interface SuitePrecos {
   '3h'?: number
@@ -29,6 +30,11 @@ export interface SuiteLive {
   funcionario_nome?: string | null
   minutos_ocupada?: number | null
   minutos_no_status_atual: number
+  // Vindos da view v_suites_live (alias PT em cima de stays.type / stays.price).
+  // Necessários para calcular cobrança em tempo real (preço base + adicional).
+  // Opcionais para degradar graciosamente se a view ainda não os expõe.
+  modalidade?: string | null
+  valor_base?: number | null
 }
 
 export interface ReceitaItem {

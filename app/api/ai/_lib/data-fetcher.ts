@@ -26,6 +26,7 @@ interface StayRow {
   void_approved_by: string | null
   payment_status: string
   price: number | null
+  extra_value: number | null
   payment_method: string | null
   suite_id: string
   suites: { number: number; type: string }[] | null
@@ -66,6 +67,7 @@ interface OpenStayRow {
   type: string | null
   payment_method: string | null
   price: number | null
+  extra_value: number | null
   suites: { number: number; type: string }[] | null
 }
 
@@ -82,7 +84,7 @@ export async function fetchDataForPeriod(
       sb
         .from('stays')
         .select(
-          'id, closed_at, void_approved_by, payment_status, price, payment_method, suite_id, suites(number, type)'
+          'id, closed_at, void_approved_by, payment_status, price, extra_value, payment_method, suite_id, suites(number, type)'
         )
         .gte('opened_at', start)
         .lte('opened_at', end),
@@ -118,13 +120,13 @@ export async function fetchDataForPeriod(
   const concluidos = stays.filter((s) => s.closed_at != null && s.void_approved_by == null)
   const confirmados = concluidos.filter((s) => s.payment_status === 'confirmed')
 
-  const receitaConfirmada = confirmados.reduce(
-    (sum, s) => sum + (Number(s.price) || 0),
-    0
-  )
+  const valorStay = (s: StayRow): number =>
+    (Number(s.price) || 0) + (Number(s.extra_value) || 0)
+
+  const receitaConfirmada = confirmados.reduce((sum, s) => sum + valorStay(s), 0)
   const receitaPendente = stays
     .filter((s) => s.payment_status === 'pending')
-    .reduce((sum, s) => sum + (Number(s.price) || 0), 0)
+    .reduce((sum, s) => sum + valorStay(s), 0)
 
   const distPag: Record<string, number> = {}
   for (const s of concluidos) {
@@ -232,7 +234,7 @@ export async function fetchDataForPeriod(
   // "aberta" = closed_at IS NULL AND void_approved_by IS NULL
   const { data: staysAbertasRaw } = await sb
     .from('stays')
-    .select('id, opened_at, type, payment_method, price, suites(number, type)')
+    .select('id, opened_at, type, payment_method, price, extra_value, suites(number, type)')
     .is('closed_at', null)
     .is('void_approved_by', null)
     .order('opened_at', { ascending: true })
@@ -246,18 +248,22 @@ export async function fetchDataForPeriod(
     // stays.type guarda o período (3h, 6h, 12h, pernoite). Normalizamos:
     const tipoPeriodo: 'hora' | 'pernoite' =
       s.type === 'pernoite' ? 'pernoite' : 'hora'
+    const valorEsperado =
+      s.price == null && s.extra_value == null
+        ? null
+        : (Number(s.price) || 0) + (Number(s.extra_value) || 0)
     return {
       numero: suite?.number != null ? String(suite.number) : '?',
       tipo: suite?.type ?? '—',
       minutosAberta,
       tipoPeriodo,
       formaPagamento: s.payment_method,
-      valorEsperado: s.price,
+      valorEsperado,
     }
   })
 
   const receitaEmAberto = staysAbertas.reduce(
-    (sum, s) => sum + (Number(s.price) || 0),
+    (sum, s) => sum + (Number(s.price) || 0) + (Number(s.extra_value) || 0),
     0
   )
 
