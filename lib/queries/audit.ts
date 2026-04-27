@@ -46,10 +46,11 @@ export async function getAuditLog({
 
 export async function getAuditUsers(): Promise<Array<{ id: string; name: string }>> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('id, name')
     .eq('active', true)
     .order('name')
+  if (error) throw new Error(error.message)
   return (data ?? []) as Array<{ id: string; name: string }>
 }

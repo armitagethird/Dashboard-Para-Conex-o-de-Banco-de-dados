@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Paraíso Dashboard',
   description: 'Sistema de controle — Paraíso Motel',
+  robots: { index: false, follow: false },
 }
 
 export const viewport: Viewport = {

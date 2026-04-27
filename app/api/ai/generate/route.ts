@@ -169,7 +169,7 @@ async function saveAndRespond(
     .single()
 
   if (error) {
-    console.error('[AI Generate] Erro ao salvar:', error)
+    console.error('[AI Generate] Erro ao salvar:', error.message ?? 'unknown')
     return NextResponse.json(
       { success: false, error: 'Falha ao salvar relatório' },
       { status: 500 }
@@ -235,7 +235,7 @@ export async function POST(
   try {
     return await runGeneration(tipo, isManual)
   } catch (err) {
-    console.error('[AI Generate] Erro:', err)
+    console.error('[AI Generate] Erro:', err instanceof Error ? err.message : 'unknown')
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : 'Erro interno' },
       { status: 500 }
@@ -270,7 +270,7 @@ export async function GET(
   try {
     return await runGeneration(tipo, false)
   } catch (err) {
-    console.error('[AI Generate Cron] Erro:', err)
+    console.error('[AI Generate Cron] Erro:', err instanceof Error ? err.message : 'unknown')
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : 'Erro interno' },
       { status: 500 }

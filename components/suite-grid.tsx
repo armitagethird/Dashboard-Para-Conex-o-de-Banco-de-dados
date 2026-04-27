@@ -230,8 +230,8 @@ export function SuiteGrid({ initialSuites }: SuiteGridProps) {
 
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {suites.map((suite, i) => (
-          <div key={`${suite.id}-${i}`} className="suite-card">
+        {suites.map((suite) => (
+          <div key={suite.id} className="suite-card">
             <SuiteCard suite={suite} onClick={() => setSelectedSuite(suite)} />
           </div>
         ))}

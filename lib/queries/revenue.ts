@@ -46,7 +46,7 @@ export async function getReceitaPorHora(): Promise<ReceitaHoraEntry[]> {
     .eq('payment_status', 'confirmed')
     .gte('closed_at', startOfDay.toISOString())
     .order('closed_at')
-  if (error) return []
+  if (error) throw error
 
   const map: Record<string, number> = {}
   for (let h = 0; h < 24; h++) {
