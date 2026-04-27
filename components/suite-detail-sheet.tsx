@@ -57,13 +57,11 @@ const SEVERITY_STYLE: Record<AlertaSeveridade, { color: string; bg: string; labe
 }
 
 const PRECO_LABEL: Record<string, string> = {
-  '3h':      '3 horas',
-  '6h':      '6 horas',
-  '12h':     '12 horas',
-  pernoite:  'Pernoite',
+  '2h':     '2 horas',
+  pernoite: 'Pernoite',
 }
 
-const PRECO_ORDER = ['3h', '6h', '12h', 'pernoite']
+const PRECO_ORDER = ['2h', 'pernoite']
 
 export function SuiteDetailSheet({ suite, alertas, open, onClose }: SuiteDetailSheetProps) {
   if (!suite) return null

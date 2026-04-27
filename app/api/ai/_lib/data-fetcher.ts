@@ -245,7 +245,7 @@ export async function fetchDataForPeriod(
   const suitesEmUso: SuiteEmUso[] = staysAbertas.map((s) => {
     const suite = s.suites?.[0]
     const minutosAberta = Math.floor((agora - new Date(s.opened_at).getTime()) / 60000)
-    // stays.type guarda o período (3h, 6h, 12h, pernoite). Normalizamos:
+    // stays.type guarda o período (2h, pernoite). Normalizamos:
     const tipoPeriodo: 'hora' | 'pernoite' =
       s.type === 'pernoite' ? 'pernoite' : 'hora'
     const valorEsperado =

@@ -149,8 +149,7 @@ export function calcCobranca(args: {
     precoBase = precos[stayType] ?? null
   }
   if (precoBase == null && precos) {
-    precoBase =
-      precos['3h'] ?? precos['6h'] ?? precos['12h'] ?? precos.pernoite ?? null
+    precoBase = precos['2h'] ?? precos.pernoite ?? null
   }
   precoBase = precoBase ?? 0
 

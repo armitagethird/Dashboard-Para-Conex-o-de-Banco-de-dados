@@ -11,9 +11,7 @@ export type AlertaTipo =
   | 'pernoite_overtime'
 
 export interface SuitePrecos {
-  '3h'?: number
-  '6h'?: number
-  '12h'?: number
+  '2h'?: number
   pernoite?: number
   [key: string]: number | undefined
 }
