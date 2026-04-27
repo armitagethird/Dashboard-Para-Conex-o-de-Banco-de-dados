@@ -42,7 +42,10 @@ export default async function DashboardLayout({
       <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
         <Sidebar user={dashboardUser} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <main className="flex-1 overflow-y-auto pb-24">
+          <main
+            className="flex-1 overflow-y-auto"
+            style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
+          >
             {children}
           </main>
         </div>

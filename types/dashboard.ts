@@ -66,6 +66,40 @@ export interface AlertaPendente {
   severidade: AlertaSeveridade
 }
 
+// Histórico de uma stay (para o painel de detalhes da suíte).
+export interface StayHistorico {
+  id: string
+  opened_at: string
+  closed_at: string | null
+  type: string | null
+  price: number | null
+  extra_value: number | null
+  pre_pernoite_value: number | null
+  payment_status: string | null
+  payment_method: string | null
+  void_approved_by: string | null
+  void_reason: string | null
+  expected_checkout_at: string | null
+  opened_by_name: string | null
+  closed_by_name: string | null
+}
+
+// Item consumido durante uma stay (frigobar/cardápio).
+export interface ConsumoItem {
+  id: string
+  nome: string
+  quantidade: number
+  reason: string | null
+  created_at: string
+}
+
+export interface SuiteDetalhes {
+  staysHoje: StayHistorico[]
+  consumo: ConsumoItem[]
+  receitaHoje: number
+  expectedCheckoutAt: string | null
+}
+
 export interface AuditLogEntry {
   id: string
   table_name: string

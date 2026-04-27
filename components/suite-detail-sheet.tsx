@@ -1,6 +1,19 @@
 'use client'
 
-import { AlertTriangle, Clock, CreditCard, Moon, Receipt, User, Wrench } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {
+  AlertTriangle,
+  Ban,
+  Clock,
+  CreditCard,
+  History,
+  Moon,
+  Package,
+  Receipt,
+  TrendingUp,
+  User,
+  Wrench,
+} from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -12,7 +25,15 @@ import { useTempoDecorrido } from '@/lib/hooks/use-tempo-decorrido'
 import { formatPaymentMethod } from '@/lib/payment-methods'
 import { formatBRL, formatDate, formatRelative } from '@/lib/utils'
 import { formatTempoRestante, type Cobranca } from '@/lib/billing'
-import type { SuiteLive, SuiteStatus, AlertaPendente, AlertaSeveridade } from '@/types/dashboard'
+import { getSuiteDetalhesClient } from '@/lib/queries/suites-client'
+import type {
+  SuiteLive,
+  SuiteStatus,
+  AlertaPendente,
+  AlertaSeveridade,
+  SuiteDetalhes,
+  StayHistorico,
+} from '@/types/dashboard'
 
 interface SuiteDetailSheetProps {
   suite: SuiteLive | null
@@ -74,6 +95,31 @@ function SuiteDetailBody({ suite, alertas }: { suite: SuiteLive; alertas: Alerta
 
   const hasAnyPreco = PRECO_ORDER.some((k) => suite.precos?.[k] != null)
 
+  // Detalhes adicionais (atendimentos do dia, consumo, receita, checkout previsto).
+  const [detalhes, setDetalhes] = useState<SuiteDetalhes | null>(null)
+  const [loadingDetalhes, setLoadingDetalhes] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingDetalhes(true)
+    getSuiteDetalhesClient(suite.id, suite.stay_id ?? null)
+      .then((d) => {
+        if (!cancelled) {
+          setDetalhes(d)
+          setLoadingDetalhes(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoadingDetalhes(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [suite.id, suite.stay_id])
+
+  const voidsHoje = detalhes?.staysHoje.filter((s) => s.void_approved_by) ?? []
+  const atendimentosValidos = detalhes?.staysHoje.filter((s) => !s.void_approved_by) ?? []
+
   return (
     <>
       {/* Header */}
@@ -105,6 +151,44 @@ function SuiteDetailBody({ suite, alertas }: { suite: SuiteLive; alertas: Alerta
       </SheetHeader>
 
       <div className="flex-1 px-6 py-6 space-y-6">
+        {/* Stats do dia + checkout previsto */}
+        <div className="grid grid-cols-2 gap-2">
+          <StatTile
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="Receita hoje"
+            value={
+              loadingDetalhes
+                ? '…'
+                : formatBRL(detalhes?.receitaHoje ?? 0)
+            }
+            valueColor={
+              !loadingDetalhes && (detalhes?.receitaHoje ?? 0) > 0
+                ? '#22C55E'
+                : undefined
+            }
+          />
+          <StatTile
+            icon={<History className="w-4 h-4" />}
+            label="Atendimentos hoje"
+            value={
+              loadingDetalhes
+                ? '…'
+                : String(atendimentosValidos.length)
+            }
+            sub={
+              voidsHoje.length > 0
+                ? `+${voidsHoje.length} void${voidsHoje.length > 1 ? 's' : ''}`
+                : undefined
+            }
+            subColor="#EF4444"
+          />
+        </div>
+
+        {/* Próximo checkout previsto */}
+        {suite.status === 'occupied' && detalhes?.expectedCheckoutAt && (
+          <CheckoutPrevisto isoDate={detalhes.expectedCheckoutAt} />
+        )}
+
         {/* Alerta: isOvertime */}
         {isOvertime && (
           <div
@@ -225,6 +309,56 @@ function SuiteDetailBody({ suite, alertas }: { suite: SuiteLive; alertas: Alerta
               <p className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {formatMinutos(suite.minutos_no_status_atual)}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Consumo (frigobar/cardápio) — somente da stay atual */}
+        {detalhes && detalhes.consumo.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-widest font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              Consumo (frigobar)
+            </p>
+            <div className="rounded-lg p-3 space-y-2" style={{ background: 'var(--bg-elevated)' }}>
+              {detalhes.consumo.map((item) => (
+                <div key={item.id} className="flex items-center gap-3">
+                  <Package className="w-4 h-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+                  <span className="flex-1 text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                    {item.nome}
+                  </span>
+                  <span className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    ×{item.quantidade}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Atendimentos do dia (timeline) */}
+        {atendimentosValidos.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-widest font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              Atendimentos de hoje
+            </p>
+            <div className="space-y-2">
+              {atendimentosValidos.map((s) => (
+                <StayHistoricoRow key={s.id} stay={s} isCurrent={s.id === suite.stay_id} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Voids do dia */}
+        {voidsHoje.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-widest font-medium" style={{ color: 'var(--text-tertiary)' }}>
+              Cancelamentos (void) hoje
+            </p>
+            <div className="space-y-2">
+              {voidsHoje.map((s) => (
+                <VoidRow key={s.id} stay={s} />
+              ))}
             </div>
           </div>
         )}
@@ -418,6 +552,195 @@ function CobrancaBlock({ cobranca }: { cobranca: Cobranca }) {
           </span>
         </div>
       </div>
+    </div>
+  )
+}
+
+function StatTile({
+  icon,
+  label,
+  value,
+  valueColor,
+  sub,
+  subColor,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  valueColor?: string
+  sub?: string
+  subColor?: string
+}) {
+  return (
+    <div className="rounded-lg p-3" style={{ background: 'var(--bg-elevated)' }}>
+      <div className="flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+        {icon}
+        <span className="text-[10px] uppercase tracking-widest">{label}</span>
+      </div>
+      <p
+        className="font-mono text-base font-bold mt-1"
+        style={{ color: valueColor ?? 'var(--text-primary)' }}
+      >
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[10px] mt-0.5" style={{ color: subColor ?? 'var(--text-tertiary)' }}>
+          {sub}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function CheckoutPrevisto({ isoDate }: { isoDate: string }) {
+  const [now, setNow] = useState<number>(() => Date.now())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const target = new Date(isoDate).getTime()
+  const diff = target - now
+  const passou = diff <= 0
+  const restante = Math.abs(diff)
+  const restanteLabel = passou
+    ? `há ${formatTempoRestante(restante)}`
+    : `em ${formatTempoRestante(restante)}`
+
+  return (
+    <div
+      className="rounded-lg p-4 flex items-start gap-3"
+      style={{
+        background: passou ? 'rgba(196,30,32,0.08)' : 'var(--bg-elevated)',
+        borderLeft: passou ? '3px solid #C41E20' : undefined,
+      }}
+    >
+      <Clock
+        className="w-4 h-4 shrink-0 mt-0.5"
+        style={{ color: passou ? '#C41E20' : 'var(--text-tertiary)' }}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
+          Checkout previsto
+        </p>
+        <p className="font-mono text-sm font-semibold mt-1" style={{ color: 'var(--text-primary)' }}>
+          {formatDate(isoDate, "dd/MM 'às' HH:mm")}
+        </p>
+        <p
+          className="text-[11px] font-mono mt-0.5"
+          style={{ color: passou ? '#C41E20' : 'var(--text-secondary)' }}
+        >
+          {restanteLabel}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function totalStay(s: StayHistorico): number {
+  return (
+    (Number(s.price) || 0) +
+    (Number(s.extra_value) || 0) +
+    (Number(s.pre_pernoite_value) || 0)
+  )
+}
+
+function StayHistoricoRow({ stay, isCurrent }: { stay: StayHistorico; isCurrent: boolean }) {
+  const aberta = stay.closed_at == null
+  const total = totalStay(stay)
+  const horario = formatDate(stay.opened_at, 'HH:mm')
+  const horarioFim = stay.closed_at ? formatDate(stay.closed_at, 'HH:mm') : null
+
+  let statusColor = 'var(--text-tertiary)'
+  let statusLabel = 'Concluída'
+  if (aberta) {
+    statusColor = '#C41E20'
+    statusLabel = 'Em andamento'
+  } else if (stay.payment_status === 'pending') {
+    statusColor = '#F59E0B'
+    statusLabel = 'Pagamento pendente'
+  }
+
+  return (
+    <div
+      className="rounded-lg p-3"
+      style={{
+        background: 'var(--bg-elevated)',
+        borderLeft: isCurrent ? '3px solid #C41E20' : '3px solid transparent',
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {horario}
+            {horarioFim ? ` → ${horarioFim}` : ''}
+          </span>
+          {stay.type && (
+            <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-overlay)', color: 'var(--text-secondary)' }}>
+              {stay.type}
+            </span>
+          )}
+        </div>
+        <span className="font-mono text-sm font-bold shrink-0" style={{ color: 'var(--text-primary)' }}>
+          {formatBRL(total)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <div className="flex items-center gap-2 text-[11px] truncate" style={{ color: 'var(--text-tertiary)' }}>
+          {stay.opened_by_name && (
+            <span className="flex items-center gap-1 truncate">
+              <User className="w-3 h-3 shrink-0" />
+              <span className="truncate">{stay.opened_by_name}</span>
+            </span>
+          )}
+          {stay.payment_method && (
+            <span className="flex items-center gap-1 shrink-0">
+              <CreditCard className="w-3 h-3" />
+              {formatPaymentMethod(stay.payment_method)}
+            </span>
+          )}
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-widest shrink-0" style={{ color: statusColor }}>
+          {statusLabel}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function VoidRow({ stay }: { stay: StayHistorico }) {
+  const total = totalStay(stay)
+  const horario = formatDate(stay.opened_at, "HH:mm")
+  return (
+    <div
+      className="rounded-lg p-3 space-y-1"
+      style={{
+        background: 'rgba(239,68,68,0.08)',
+        border: '1px solid rgba(239,68,68,0.25)',
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Ban className="w-4 h-4 shrink-0" style={{ color: '#EF4444' }} />
+          <span className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {horario}
+          </span>
+          {stay.type && (
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
+              {stay.type}
+            </span>
+          )}
+        </div>
+        <span className="font-mono text-sm font-bold shrink-0" style={{ color: '#EF4444' }}>
+          −{formatBRL(total)}
+        </span>
+      </div>
+      {stay.void_reason && (
+        <p className="text-xs leading-relaxed pl-6" style={{ color: 'var(--text-secondary)' }}>
+          {stay.void_reason}
+        </p>
+      )}
     </div>
   )
 }
